@@ -12,6 +12,22 @@ def _esc(s: str) -> str:
     return s.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
 
 
+def _fold(line: str) -> list[str]:
+    """Fold content lines longer than 75 octets (RFC 5545 section 3.1)."""
+    out: list[str] = []
+    current, size = "", 0
+    for ch in line:
+        n = len(ch.encode("utf-8"))
+        limit = 75 if not out else 74  # continuation lines start with a space
+        if size + n > limit:
+            out.append(current)
+            current, size = "", 0
+        current += ch
+        size += n
+    out.append(current)
+    return [out[0], *(" " + c for c in out[1:])]
+
+
 def _fmt(dt: datetime) -> str:
     return dt.strftime("%Y%m%dT%H%M%S")
 
@@ -39,7 +55,8 @@ def to_ics(trip: Trip, activities: list[Activity], stamp: datetime | None = None
             lines.append(f"DESCRIPTION:{_esc(a.notes)}")
         lines.append("END:VEVENT")
     lines.append("END:VCALENDAR")
-    return "\r\n".join(lines) + "\r\n"
+    folded = [part for line in lines for part in _fold(line)]
+    return "\r\n".join(folded) + "\r\n"
 
 
 def to_markdown(trip: Trip, activities: list[Activity]) -> str:
