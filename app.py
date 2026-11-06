@@ -30,6 +30,7 @@ from trip_planner.models import (
 from trip_planner.packing import progress, template_for
 from trip_planner.seed import ensure_seeded
 
+MONEY = st.column_config.NumberColumn(format="$%.2f")
 DB_PATH = os.environ.get("TRIP_PLANNER_DB", str(Path(__file__).parent / "data" / "trips.db"))
 
 st.set_page_config(page_title="Group Trip Planner", page_icon="🧳", layout="wide")
@@ -93,14 +94,15 @@ packing = store.list_packing(trip_id)
 # ---------------------------------------------------------------- header
 st.title(trip.name)
 days_out = reports.countdown_days(trip, date.today())
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Destination", trip.destination)
-c2.metric("Dates", f"{trip.start_date:%b %d} to {trip.end_date:%b %d, %Y}", f"{trip.num_days} days")
-c3.metric("Travelers", len(trip.travelers), ", ".join(trip.travelers), delta_color="off")
-c4.metric(
-    "Departs in",
-    f"{days_out} days" if days_out > 0 else "Underway or done",
+st.caption(
+    f"📍 {trip.destination} · 🗓️ {trip.start_date:%a %b %d} to {trip.end_date:%a %b %d, %Y}"
+    f" · 👥 {', '.join(trip.travelers)}"
 )
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("Days", trip.num_days)
+c2.metric("Travelers", len(trip.travelers))
+c3.metric("Group budget", f"${sum(budget.values()):,.0f}")
+c4.metric("Departs in", f"{days_out} days" if days_out > 0 else "Underway or done")
 
 conflicts = reports.conflict_messages(activities)
 if conflicts:
@@ -119,7 +121,11 @@ with tab_it:
         by_day.setdefault(a.day, []).append(a)
     for n, day in enumerate(trip.days(), 1):
         acts = sorted(by_day.get(day, []), key=lambda a: a.start)
-        with st.expander(f"Day {n}: {day:%A, %b %d} ({len(acts)} activities)", expanded=n == 1):
+        noun = "activity" if len(acts) == 1 else "activities"
+        with st.expander(
+            f"Day {n}: {day:%A, %b %d} ({len(acts)} {noun})",
+            expanded=n == 1,
+        ):
             if not acts:
                 st.caption("Free day")
             for a in acts:
@@ -199,10 +205,23 @@ with tab_budget:
         ),
         hide_index=True,
         width="stretch",
+        column_config={k: MONEY for k in ("Planned", "Spent", "Remaining", "Per person")}
+        | {"% used": st.column_config.NumberColumn(format="%.1f%%")},
     )
     st.bar_chart(df.set_index("category")[["planned", "spent"]], stack=False)
     st.subheader("Per person")
-    st.dataframe(reports.per_person_frame(trip, budget, expenses), hide_index=True)
+    st.dataframe(
+        reports.per_person_frame(trip, budget, expenses).rename(
+            columns={
+                "traveler": "Traveler",
+                "share_spent": "Fair share spent",
+                "target": "Target",
+                "remaining": "Remaining",
+            }
+        ),
+        hide_index=True,
+        column_config={k: MONEY for k in ("Fair share spent", "Target", "Remaining")},
+    )
 
     with st.form("budget_form"):
         st.write("Edit category budgets (group total)")
@@ -239,7 +258,11 @@ with tab_exp:
                 st.write(f"**{frm}** pays **{to}** ${amt:,.2f}")
 
     st.subheader("Expense log")
-    st.dataframe(reports.expense_frame(expenses).drop(columns="id"), hide_index=True)
+    st.dataframe(
+        reports.expense_frame(expenses).drop(columns="id"),
+        hide_index=True,
+        column_config={"Amount": MONEY},
+    )
 
     with st.form("add_expense", clear_on_submit=True):
         st.write("Log an expense")

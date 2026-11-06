@@ -17,7 +17,7 @@ def test_seed_creates_tokyo_trip(store):
     acts = store.list_activities(trip.id)
     assert {a.day for a in acts} == set(trip.days())
     assert len(find_conflicts(acts)) == 1  # one deliberate overlap to showcase detection
-    assert len(store.list_expenses(trip.id)) == 15
+    assert len(store.list_expenses(trip.id)) == 16
     assert 0 < sum(i.packed for i in store.list_packing(trip.id)) < len(store.list_packing(trip.id))
 
 
@@ -56,6 +56,6 @@ def test_budget_and_per_person_frames(store):
 def test_expense_frame_and_countdown(store):
     trip = seed_sample_trip(store)
     df = reports.expense_frame(store.list_expenses(trip.id))
-    assert "Split with" in df.columns and len(df) == 15
+    assert "Split with" in df.columns and len(df) == 16
     assert reports.expense_frame([]).empty
     assert reports.countdown_days(trip, date(2027, 3, 20)) == 7

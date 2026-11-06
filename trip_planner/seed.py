@@ -70,7 +70,8 @@ def sample_expenses(travelers: list[str]) -> list[Expense]:
     a, b, c, d = travelers[:4]
     everyone = list(travelers)
     rows = [
-        ("Hotel, 6 nights (2 rooms)", 2640.00, a, everyone, "Lodging", 0),
+        ("Hotel nights 1-3 (2 rooms)", 1320.00, a, everyone, "Lodging", 0),
+        ("Hotel nights 4-6 (2 rooms)", 1320.00, b, everyone, "Lodging", 3),
         ("Suica top-ups", 160.00, b, everyone, "Transport", 0),
         ("Omoide Yokocho izakaya", 148.40, c, everyone, "Food", 0),
         ("Tsukiji breakfast", 86.20, d, everyone, "Food", 1),
